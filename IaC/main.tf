@@ -7,3 +7,4 @@ module "vpc_infrastructure" {
 module "s3_storage" {
   source = "./S3"
 }
+# Triggering security scan
