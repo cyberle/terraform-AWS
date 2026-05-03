@@ -1,0 +1,63 @@
+on:
+  push:
+    # Trigger only when pushing to feature branch
+    branches:
+      - feature
+    # Only run if files inside the IaC folder are changed (saves money/time)
+    paths:
+      - 'IaC/**'
+
+permissions:
+  contents: read
+
+jobs:
+  terraform_pipeline:
+    name: "Security Scan & AWS Deploy"
+    runs-on: ubuntu-latest
+    
+    # Environment variables for AWS Authentication
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: "ap-southeast-1" # Update this to your preferred region
+
+    steps:
+      # 1. Pull the code from your repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 2. Security Scan: Checkov (SAST for IaC)
+      # This will scan IaC/main_IaC.tf and subfolders VPC/ and S3/
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: IaC
+          framework: terraform
+          # Set soft_fail to true if you want to allow deployment 
+          # even if security warnings are found.
+          soft_fail: false 
+          quiet: true
+
+      # 3. Install Terraform CLI on the runner
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # 4. Initialize Terraform (Downloads providers and child modules)
+      - name: Terraform Init
+        run: terraform init
+        working-directory: ./IaC
+
+      # 5. Check if the code is logically correct
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: ./IaC
+
+      # 6. Show the plan in the GitHub logs
+      - name: Terraform Plan
+        run: terraform plan
+        working-directory: ./IaC
+
+      # 7. Deploy to AWS (Only runs if previous steps pass)
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+        working-directory: ./IaC
