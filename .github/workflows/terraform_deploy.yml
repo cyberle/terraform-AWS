@@ -1,3 +1,4 @@
+name: "IaC scanning and AWS resource creation"
 on:
   push:
     # Trigger only when pushing to feature branch

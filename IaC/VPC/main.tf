@@ -2,38 +2,45 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
 
-  name = "cyber-leader-vpc"
-  cidr = "10.0.0.0/16"
+  azs = var.availability_zones
+  private_subnets = var.private_subnets
+  public_subnets  = var.public_subnets
 
-  azs             = ["ap-southeast-1a"]
-  public_subnets  = ["10.0.1.0/24"] # Public Subnet
-  private_subnets = ["10.0.2.0/24"] # Private Subnet
-
-  enable_nat_gateway = true
-  single_nat_gateway = true # Cost-effective for lab
-  enable_vpn_gateway = false
+  # Security best practice: Internal-only for this lab
+  enable_nat_gateway = var.enable_nat_gateway
+  single_nat_gateway = true
+  
 
   tags = {
-    Project = "Cloud-Security-Lab"
+    Terraform   = "true"
+    Environment = var.environment
   }
 }
 
 # Security Group to allow internal traffic
 resource "aws_security_group" "internal_only" {
-  name        = "internal-app-sg"
+  name        = "${var.environment}-app-sg"
+  description = "SG with NAT Gateway outbound access"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["10.0.0.0/16"]
+    description = "Allow HTTPS from internal network"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    description = "Allow HTTPS outbound for API calls and updates"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name        = "${var.environment}-app-sg"
+    Environment = var.environment
   }
 }
