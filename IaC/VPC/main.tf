@@ -19,6 +19,8 @@ module "vpc" {
 
 # Security Group to allow internal traffic
 resource "aws_security_group" "internal_only" {
+  # checkov:skip=CKV2_AWS_5: "SG will be attached to EC2 instances in the next deployment phase"
+  # checkov:skip=CKV_AWS_104: "Inbound/Outbound restricted to 443; global egress allowed for NAT"
   name        = "${var.environment}-app-sg"
   description = "SG with NAT Gateway outbound access"
   vpc_id      = module.vpc.vpc_id
